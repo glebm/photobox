@@ -9,78 +9,97 @@
 */
 
 (function($){
-    "use strict";
-    var doc = document, win = window, Photobox, photoboxes = [], photobox, options, images=[], imageLinks, activeImage = -1, activeURL, prevImage, nextImage, thumbsStripe, docElm, APControl,
-        transitionend = "transitionend webkitTransitionEnd oTransitionEnd MSTransitionEnd", 
-        isOldIE = !('placeholder' in doc.createElement('input')),
-        isIE = !!win.ActiveXObject,
-        isMobile = 'ontouchend' in doc,
-        thumbsContainerWidth, thumbsTotalWidth, activeThumb = $(),
-        blankImg = "data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==",
-        transformOrigin = getPrefixed('transformOrigin'),
-        transition = getPrefixed('transition'),
+  "use strict";
+  var doc = document, win = window, Photobox, photoboxes = [], photobox, options, images=[], imageLinks, activeImage = -1, activeURL, prevImage, nextImage, thumbsStripe, docElm, APControl,
+    transitionend = "transitionend webkitTransitionEnd oTransitionEnd MSTransitionEnd",
+    isOldIE = !('placeholder' in doc.createElement('input')),
+    isIE = !!win.ActiveXObject,
+    isMobile = 'ontouchend' in doc,
+    thumbsContainerWidth, thumbsTotalWidth, activeThumb = $(),
+    blankImg = "data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==",
+    transformOrigin = getPrefixed('transformOrigin'),
+    transition = getPrefixed('transition'),
 
-        // Preload images
-        preload = {}, preloadPrev = new Image(), preloadNext = new Image(),
-        // DOM elements
-        closeBtn, image, prevBtn, nextBtn, caption, captionText, pbLoader, autoplayBtn, thumbs, imageWrap, 
+  // Preload images
+    preload = {}, preloadPrev = new Image(), preloadNext = new Image(),
+  // DOM elements
+    overlay, closeBtn, image, prevBtn, nextBtn, caption, captionText, pbLoader, autoplayBtn, thumbs, imageWrap,
 
-        defaults = {
-            loop:       true,   // Allows to navigate between first and last images
-            thumbs:     true,   // Show gallery thumbnails below the presented photo
-            counter:    true,   // Counter text (example [24/62])
-            title:      true,   // show the original alt or title attribute of the image's thumbnail
-            autoplay:   false,  // should autoplay on first time or not
-            time:       3000,   // autoplay interna, in miliseconds (less than 1000 will hide the autoplay button)
-            history:    true,   // should use history hashing if possible (HTML5 API)
-            hideFlash:  true,   // Hides flash elements on the page when photobox is activated. NOTE: flash elements must have wmode parameter set to "opaque" or "transparent" if this is set to false
-            zoomable:   true,   // disable/enable mousewheel image zooming
-            keys: {
-                close: '27, 88, 67',    // keycodes to close Picbox, default: Esc (27), 'x' (88), 'c' (67)
-                prev:  '37, 80',        // keycodes to navigate to the previous image, default: Left arrow (37), 'p' (80)
-                next:  '39, 78'         // keycodes to navigate to the next image, default: Right arrow (39), 'n' (78)
-            }
-        },
+    defaults = {
+      loop:       true,   // Allows to navigate between first and last images
+      thumbs:     true,   // Show gallery thumbnails below the presented photo
+      counter:    true,   // Counter text (example [24/62])
+      title:      true,   // show the original alt or title attribute of the image's thumbnail
+      autoplay:   false,  // should autoplay on first time or not
+      time:       3000,   // autoplay interna, in miliseconds (less than 1000 will hide the autoplay button)
+      history:    true,   // should use history hashing if possible (HTML5 API)
+      hideFlash:  true,   // Hides flash elements on the page when photobox is activated. NOTE: flash elements must have wmode parameter set to "opaque" or "transparent" if this is set to false
+      zoomable:   true,   // disable/enable mousewheel image zooming
+      keys: {
+        close: '27, 88, 67',    // keycodes to close Picbox, default: Esc (27), 'x' (88), 'c' (67)
+        prev:  '37, 80',        // keycodes to navigate to the previous image, default: Left arrow (37), 'p' (80)
+        next:  '39, 78'         // keycodes to navigate to the next image, default: Right arrow (39), 'n' (78)
+      }
+    };
 
+
+    Photobox = function(_options, object, target){
+        this.options = $.extend({}, _options);
+        this.target = target;
+        this.selector = $(object || doc);
+    
+        this.thumbsList = null;
+        // filter the links which actually HAS an image as a child
+        var filtered = this.imageLinksFilter( object.find(target) );
+    
+        this.imageLinks = filtered[0];
+        this.images = filtered[1];
+        this.init();
+    };
+  
+    /*
+     Initialization (on DOM ready)
+     */
+    $(doc).ready(Photobox.initOverlayDom = function(){
+        // remove old content to make this idempotent (useful for Turbolinks page:restore)
+        $('#pbOverlay').remove();
+        $(doc).off('.photobox');
         // DOM structure
         overlay = $('<div id="pbOverlay">').append(
-                    pbLoader = $('<div class="pbLoader"><b></b><b></b><b></b></div>'),
-                    imageWrap = $('<div class="imageWrap">').append(
-                        image = $('<img>'),
-                        prevBtn = $('<div id="pbPrevBtn" class="prevNext"><b></b></div>').on('click', next_prev),
-                        nextBtn = $('<div id="pbNextBtn" class="prevNext"><b></b></div>').on('click', next_prev)
-                    ),
-                    closeBtn = $('<div id="pbCloseBtn">').on('click', close)[0],
-                    autoplayBtn = $('<div id="pbAutoplayBtn">').append(
-                        $('<div class="pbProgress">')
-                    ),
-                    caption = $('<div id="pbCaption">').append(
-                        captionText = $('<div class="pbCaptionText">').append('<div class="title"></div><div class="counter">'),
-                        thumbs = $('<div>').addClass('pbThumbs')
-                    )
-                );
-    /*
-        Initialization (on DOM ready)
-    */
-    $(doc).ready(function(){
+          pbLoader = $('<div class="pbLoader"><b></b><b></b><b></b></div>'),
+          imageWrap = $('<div class="imageWrap">').append(
+            image = $('<img>'),
+            prevBtn = $('<div id="pbPrevBtn" class="prevNext"><b></b></div>').on('click', next_prev),
+            nextBtn = $('<div id="pbNextBtn" class="prevNext"><b></b></div>').on('click', next_prev)
+          ),
+          closeBtn = $('<div id="pbCloseBtn">').on('click', close)[0],
+          autoplayBtn = $('<div id="pbAutoplayBtn">').append(
+            $('<div class="pbProgress">')
+          ),
+          caption = $('<div id="pbCaption">').append(
+            captionText = $('<div class="pbCaptionText">').append('<div class="title"></div><div class="counter">'),
+            thumbs = $('<div>').addClass('pbThumbs')
+          )
+        );
+    
         // if useragent is IE < 10 (user deserves a slap on the face, but I gotta support them still...)
         isOldIE && overlay.addClass('msie');
-		
-		isIE && overlay.hide();
-
+    
+        isIE && overlay.hide();
+    
         autoplayBtn.on('click', APControl.toggle);
         // attach a delegated event on the thumbs container
         thumbs.on('click', 'a', thumbsStripe.click);
         // enable scrolling gesture on mobile
         isMobile && thumbs.css('overflow', 'auto');
-        
+    
         // cancel prppogation up to the overlay container so it won't close
         overlay.on('click', 'img', function(e){
-            e.stopPropagation();
+          e.stopPropagation();
         });
-
+    
         $(doc.body).prepend( $(overlay) );
-        
+    
         // need this for later:
         docElm = doc.documentElement;
     });
@@ -103,7 +122,7 @@
         // yes i know, it fired for every created gallery (instead of asking the code implementer to fire it after all galleries are loaded)
         history.load();
         return this;
-    }
+    };
     
     Photobox = function(_options, object, target){
         this.options = $.extend({}, _options);
@@ -278,7 +297,7 @@
 			close();
             return this.selector;
         }
-    }
+    };
     
     // on touch-devices only
     function onSwipe(e, Dx, Dy){
