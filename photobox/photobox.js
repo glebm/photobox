@@ -11,37 +11,37 @@
 (function($){
     "use strict";
     var doc = document, win = window, Photobox, photoboxes = [], photobox, options, images=[], imageLinks, activeImage = -1, activeURL, prevImage, nextImage, thumbsStripe, docElm, APControl,
-      transitionend = "transitionend webkitTransitionEnd oTransitionEnd MSTransitionEnd",
-      isOldIE = !('placeholder' in doc.createElement('input')),
-      isIE = !!win.ActiveXObject,
-      isMobile = 'ontouchend' in doc,
-      thumbsContainerWidth, thumbsTotalWidth, activeThumb = $(),
-      blankImg = "data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==",
-      transformOrigin = getPrefixed('transformOrigin'),
-      transition = getPrefixed('transition'),
-  
-    // Preload images
-      preload = {}, preloadPrev = new Image(), preloadNext = new Image(),
-    // DOM elements
-      overlay, closeBtn, image, prevBtn, nextBtn, caption, captionText, pbLoader, autoplayBtn, thumbs, imageWrap,
-  
-      defaults = {
-        loop:       true,   // Allows to navigate between first and last images
-        thumbs:     true,   // Show gallery thumbnails below the presented photo
-        counter:    true,   // Counter text (example [24/62])
-        title:      true,   // show the original alt or title attribute of the image's thumbnail
-        autoplay:   false,  // should autoplay on first time or not
-        time:       3000,   // autoplay interna, in miliseconds (less than 1000 will hide the autoplay button)
-        history:    true,   // should use history hashing if possible (HTML5 API)
-        hideFlash:  true,   // Hides flash elements on the page when photobox is activated. NOTE: flash elements must have wmode parameter set to "opaque" or "transparent" if this is set to false
-        zoomable:   true,   // disable/enable mousewheel image zooming
-        keys: {
-          close: '27, 88, 67',    // keycodes to close Picbox, default: Esc (27), 'x' (88), 'c' (67)
-          prev:  '37, 80',        // keycodes to navigate to the previous image, default: Left arrow (37), 'p' (80)
-          next:  '39, 78'         // keycodes to navigate to the next image, default: Right arrow (39), 'n' (78)
-        }
-      };
+        transitionend = "transitionend webkitTransitionEnd oTransitionEnd MSTransitionEnd",
+        isOldIE = !('placeholder' in doc.createElement('input')),
+        isIE = !!win.ActiveXObject,
+        isMobile = 'ontouchend' in doc,
+        thumbsContainerWidth, thumbsTotalWidth, activeThumb = $(),
+        blankImg = "data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==",
+        transformOrigin = getPrefixed('transformOrigin'),
+        transition = getPrefixed('transition'),
 
+      // Preload images
+        preload = {}, preloadPrev = new Image(), preloadNext = new Image(),
+      // DOM elements
+        overlay, closeBtn, image, prevBtn, nextBtn, caption, captionText, pbLoader, autoplayBtn, thumbs, imageWrap,
+
+        defaults = {
+          loop:       true,   // Allows to navigate between first and last images
+          thumbs:     true,   // Show gallery thumbnails below the presented photo
+          counter:    true,   // Counter text (example [24/62])
+          title:      true,   // show the original alt or title attribute of the image's thumbnail
+          autoplay:   false,  // should autoplay on first time or not
+          time:       3000,   // autoplay interna, in miliseconds (less than 1000 will hide the autoplay button)
+          history:    true,   // should use history hashing if possible (HTML5 API)
+          hideFlash:  true,   // Hides flash elements on the page when photobox is activated. NOTE: flash elements must have wmode parameter set to "opaque" or "transparent" if this is set to false
+          zoomable:   true,   // disable/enable mousewheel image zooming
+          keys: {
+            close: '27, 88, 67',    // keycodes to close Picbox, default: Esc (27), 'x' (88), 'c' (67)
+            prev:  '37, 80',        // keycodes to navigate to the previous image, default: Left arrow (37), 'p' (80)
+            next:  '39, 78'         // keycodes to navigate to the next image, default: Right arrow (39), 'n' (78)
+          }
+        };
+        
 
     Photobox = function(_options, object, target){
         this.options = $.extend({}, _options);
