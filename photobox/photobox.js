@@ -275,7 +275,7 @@
                 });
             }
             
-            $(doc)[fn]({ "keydown.photobox": keyDown });
+            $(doc)[fn]("keydown.photobox", keyDown);
             
             if( 'ontouchstart' in document.documentElement ){
                 overlay.removeClass('hasArrows'); // no need for Arros on touch-enabled
